@@ -15,16 +15,29 @@ model:
   max_leaf_nodes: 500
   min_samples_leaf: 5
   max_features: sqrt
-  fraud_class_weight: 90       # ~ inverse prevalence (988,971 / 11,029 = 89.7)
+  # 'auto' = (#legitimate / #fraud) counted in the TRAINING months only, rounded to an integer
+  # (BAF Base: 668,926 / 6,740 = 99.2 -> 99). Validation and test months are never used.
+  # A number here overrides 'auto'; use that only for the sensitivity check (e.g. the old value 90).
+  fraud_class_weight: auto
   random_state: 42
 
 benchmark:
-  warmup_requests: 500
+  # Warm-up is IDENTICAL for every arm (Python and Java, in-process and REST) and uses rows from the
+  # VALIDATION month (data/processed/warmup_rows.csv), never the measured test rows.
+  warmup_requests: 2000
   measured_requests: 5000
   batch_size: 1
   seed: 42
   service_host: 127.0.0.1      # use the IP, not "localhost" (avoids IPv6 fallback delay on Windows)
   service_port: 5000
+
+campaign:                      # scripts/run_campaign.py
+  runs: 10                     # complete, independent runs; the run is the unit of analysis
+  seed: 20261031               # seeds the randomized arm order of every run (logged in schedule.csv)
+  pause_between_arms_s: 5
+  cpus: [0, 1, 2, 3]           # logical CPUs used (i5-1235U: the two performance cores)
+  waitress_threads: 4
+  java_heap: 4g
 
 paths:
   results_dir: ../results

@@ -25,6 +25,10 @@ import smile.data.vector.IntVector;
  * own classWeight argument is left at {1,1}. Passing {1,90} via Smile's classWeight produced near-constant
  * scores (AUC ~0.54) on BAF, so we use explicit oversampling instead, which is library-independent and
  * documentable. Validation and test sets are never modified.
+ *
+ * The replication factor defaults to "auto" = round(#legitimate / #fraud) counted in the TRAINING file only
+ * (identical to the Python side, common.train_class_weight). A number overrides it for the sensitivity check:
+ *   train --fraudweight 90 --tag w90   -> writes scores_smile_w90_*.csv only; rf_smile.ser is NOT overwritten.
  */
 public final class TrainSmile {
     public static void run(String[] args) throws Exception {
@@ -34,9 +38,10 @@ public final class TrainSmile {
         int depth = Integer.parseInt(o.getOrDefault("depth", "20"));
         int maxNodes = Integer.parseInt(o.getOrDefault("maxnodes", "500"));
         int nodeSize = Integer.parseInt(o.getOrDefault("nodesize", "5"));
-        int fw = Integer.parseInt(o.getOrDefault("fraudweight", "90"));
+        String fwArg = o.getOrDefault("fraudweight", "auto");
+        String tag = o.getOrDefault("tag", "");
+        String name = tag.isEmpty() ? "smile" : "smile_" + tag;
         long seed = Long.parseLong(o.getOrDefault("seed", "42"));
-        if (fw < 1) throw new IllegalArgumentException("fraudweight must be >= 1");
 
         Csv tr = Csv.read(Path.of(o.getOrDefault("train", "../data/processed/train.csv")));
         Csv va = Csv.read(Path.of(o.getOrDefault("val", "../data/processed/val.csv")));
@@ -49,6 +54,14 @@ public final class TrainSmile {
         int[] yTr = tr.labels();
         int nFraud = 0;
         for (int v : yTr) if (v == 1) nFraud++;
+        if (nFraud == 0) throw new IllegalStateException("no fraud cases in the training file");
+        int fw = fwArg.equalsIgnoreCase("auto")
+                ? (int) Math.round((double) (yTr.length - nFraud) / nFraud)
+                : Integer.parseInt(fwArg);
+        if (fw < 1) throw new IllegalArgumentException("fraudweight must be >= 1");
+        System.out.printf(Locale.ROOT, "fraud weight = %d (%s; training rows: %d legit / %d fraud = %.2f)%n",
+                fw, fwArg.equalsIgnoreCase("auto") ? "auto, training months only" : "fixed, sensitivity check",
+                yTr.length - nFraud, nFraud, (double) (yTr.length - nFraud) / nFraud);
         int nOver = xTr.length + nFraud * (fw - 1);
         double[][] xs = new double[nOver][];
         int[] ys = new int[nOver];
@@ -73,22 +86,25 @@ public final class TrainSmile {
 
         Files.createDirectories(outDir.resolve("models"));
         Files.createDirectories(outDir.resolve("tables"));
-        try (ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(
-                new FileOutputStream(outDir.resolve("models/rf_smile.ser").toFile())))) {
-            oos.writeObject(model);
+        if (tag.isEmpty()) {
+            try (ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(
+                    new FileOutputStream(outDir.resolve("models/rf_smile.ser").toFile())))) {
+                oos.writeObject(model);
+            }
         }
 
         StructField[] f = new StructField[names.length];
         for (int i = 0; i < f.length; i++) f[i] = new StructField(names[i], DataTypes.DoubleType);
         StructType schema = new StructType(f);
-        score(model, schema, va, outDir.resolve("tables/scores_smile_val.csv"));
-        score(model, schema, te, outDir.resolve("tables/scores_smile_test.csv"));
-        Files.writeString(outDir.resolve("tables/train_smile_info.json"), String.format(Locale.ROOT,
+        score(model, schema, va, outDir.resolve("tables/scores_" + name + "_val.csv"));
+        score(model, schema, te, outDir.resolve("tables/scores_" + name + "_test.csv"));
+        Files.writeString(outDir.resolve("tables/train_" + name + "_info.json"), String.format(Locale.ROOT,
                 "{\"train_seconds\": %.3f, \"trees\": %d, \"max_depth\": %d, \"max_nodes\": %d, \"node_size\": %d, "
-                        + "\"mtry\": %d, \"fraud_weight\": %d, \"weighting\": \"oversample\", "
-                        + "\"train_rows_original\": %d, \"train_rows_oversampled\": %d, \"seed\": %d, \"java\": \"%s\"}%n",
-                trainSec, trees, depth, maxNodes, nodeSize, mtry, fw, xTr.length, nOver, seed,
-                System.getProperty("java.version")));
+                        + "\"mtry\": %d, \"fraud_weight\": %d, \"fraud_weight_source\": \"%s\", \"weighting\": \"oversample\", "
+                        + "\"train_rows_original\": %d, \"train_fraud\": %d, \"train_rows_oversampled\": %d, \"seed\": %d, \"java\": \"%s\"}%n",
+                trainSec, trees, depth, maxNodes, nodeSize, mtry, fw,
+                fwArg.equalsIgnoreCase("auto") ? "auto: round(legit/fraud) in training months only" : "fixed (sensitivity check)",
+                xTr.length, nFraud, nOver, seed, System.getProperty("java.version")));
     }
 
     private static void score(RandomForest m, StructType schema, Csv d, Path out) throws Exception {

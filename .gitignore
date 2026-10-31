@@ -1,37 +1,24 @@
-# data (license CC BY-NC-SA 4.0: do not redistribute)
+# data (BAF dataset, license CC BY-NC-SA 4.0: do not redistribute; ~400 MB)
 data/raw/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
-# model binaries and heavy outputs
+# model binaries (re-created by scripts\resubmission_A_prepare_and_train.ps1)
 results/models/*
 !results/models/.gitkeep
-# python / java
+# console logs of the campaigns (large; the measurements are in run_XX/raw)
+results/campaigns/*/logs/
+# build output, environments, IDE files
+java/target/
+*.class
 __pycache__/
 *.pyc
 .venv/
-java/target/
-*.class
+venv/
 .idea/
 .vscode/
-
-java/target/
-.venv/
-data/raw/
-data/processed/
-.idea/
 *.iml
-
-java/target/
-.venv/
-data/raw/
-data/processed/
-.idea/
-*.iml
-
-java/target/
-.venv/
-data/raw/
-data/processed/
-.idea/
-*.iml
+# local working files that do not belong in the repository
+*.zip
+*.docx
+*.pdf

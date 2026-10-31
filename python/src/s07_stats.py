@@ -1,4 +1,8 @@
-"""Statistics + figures from raw latency files (results/raw/*.csv, one column 'latency_us').
+"""WITHIN-RUN statistics + figures from the raw latency files of ONE run (one column 'latency_us').
+
+NOTE: the confidence intervals here describe uncertainty WITHIN a single run (resampling its calls); they do
+not capture variation BETWEEN independent runs. The paper's main evidence is run-level:
+see s09_campaign_stats.py.  Use --raw-dir results/campaigns/<name>/run_01/raw to analyse one run.
 
 Works for Python AND Java arms: both write the same format.
 
@@ -38,14 +42,16 @@ def boot_ci(x, fn, rng, B, block):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default=None)
-    ap.add_argument("--reference", default="jvm_smile_inprocess", help="arm used as denominator/reference")
+    ap.add_argument("--reference", default="py_onnxruntime", help="arm used as denominator/reference")
     ap.add_argument("--B", type=int, default=2000)
     ap.add_argument("--block", type=int, default=20)
     ap.add_argument("--exclude", nargs="*", default=[])
+    ap.add_argument("--raw-dir", default=None, help="folder with raw files (default results/raw)")
     a = ap.parse_args()
     cfg = load_config(a.config)
     rdir = resolve(cfg, cfg["paths"]["results_dir"])
-    files = sorted((rdir / "raw").glob("*.csv"))
+    src = Path(a.raw_dir).resolve() if a.raw_dir else rdir / "raw"
+    files = sorted(f for f in src.glob("*.csv") if not f.stem.endswith(("_scores", "_breakdown")))
     data = {f.stem: pd.read_csv(f)["latency_us"].to_numpy() for f in files if f.stem not in a.exclude}
     if not data:
         raise SystemExit("no raw latency files found in results/raw")

@@ -1,0 +1,4 @@
+contrast,numerator,denominator,statistic,runs,gm_ratio,ci_lo,ci_hi,min,max,runs_ratio_gt_1,wilcoxon_p,median_difference_us,per_run_ratios
+"engine: sklearn vs ONNX Runtime, same Python process",A1,A3,median,3,191.28982347941397,158.89420597274895,230.2903138775306,175.50485436893203,200.51666666666668,3,0.25,3591.3,201 176 199
+"runtime: ONNX Runtime in JVM vs in CPython (same model, same ORT version)",A4,A3,median,3,1.255874077538439,1.062077050638241,1.4850332164556381,1.174757281553398,1.3444444444444443,3,0.25,4.599999999999998,1.34 1.17 1.25
+JVM-native Smile vs ONNX Runtime in CPython,A5,A3,median,3,0.43748056193609974,0.3065936823338629,0.6242439198845386,0.3737864077669903,0.49444444444444446,0,0.25,-9.900000000000002,0.494 0.374 0.453

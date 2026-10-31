@@ -9,5 +9,6 @@ flask>=3.0
 waitress>=3.0
 requests>=2.31
 skl2onnx>=1.16
-onnxruntime>=1.17
+onnxruntime==1.30.0   # must equal <onnxruntime.version> in java/pom.xml
+psutil>=5.9
 tabulate>=0.9

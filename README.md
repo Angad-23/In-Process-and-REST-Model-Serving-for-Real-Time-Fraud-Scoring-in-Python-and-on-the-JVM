@@ -29,18 +29,31 @@ jvm-fraud-benchmark/
 │   │   ├── s04_serve.py                REST service (Flask dev | waitress; sklearn | onnx)
 │   │   ├── s05_bench_inprocess.py      in-process Python latency arms
 │   │   ├── s06_bench_rest.py           REST round-trip latency (Python client)
-│   │   ├── s07_stats.py                CIs, Mann-Whitney, Cliff's delta, ECDF/box plots
-│   │   └── s08_evaluate_scores.py      identical metrics for any model (Smile scores from Java)
+│   │   ├── s07_stats.py                WITHIN-run CIs, Mann-Whitney, Cliff's delta, ECDF/box plots
+│   │   ├── s08_evaluate_scores.py      identical metrics for any model (Smile scores from Java), incl. test FPR
+│   │   └── s09_campaign_stats.py       RUN-level statistics for a campaign (main evidence)
 │   └── tests/test_pipeline.py    smoke test on synthetic data
 ├── java/
-│   ├── pom.xml                   Smile 3.1.1, ONNX Runtime 1.17.1, shaded jar
+│   ├── pom.xml                   Smile 3.1.1, ONNX Runtime 1.30.0 (= Python version), shaded jar
 │   └── src/main/java/bench/      Main, TrainSmile, LatencyBench, SmileArm, OnnxArm, RestArm, Csv, Arm
 ├── data/        raw/ (put Base.csv here), processed/ (generated)
 ├── results/     raw/ (per-request latencies), tables/, figures/, models/
 ├── docs/        plan, methodology, protocol, threats, reference audit, paper outline, checklist, notebook, known gaps
 ├── paper/       manuscript work area
-└── scripts/     run_python_steps.ps1 / .sh
+└── scripts/     run_campaign.py (randomized multi-run campaigns), resubmission_A/B_*.ps1, run_python_steps.ps1 / .sh
 ```
+
+## Resubmission workflow (October 2026)
+
+The IEEE Access reviewers' concerns and the code changes that address them are listed in
+`docs/11_resubmission_changes.md`. To reproduce the resubmitted results:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\resubmission_A_prepare_and_train.ps1   # data + models (~20 min)
+.venv\Scripts\python.exe scripts\run_campaign.py --campaign main --dry-run           # shows the randomized order
+powershell -ExecutionPolicy Bypass -File scripts\resubmission_B_campaigns.ps1          # all campaigns (~3-4 h)
+```
+Results: `results/campaigns/<campaign>/analysis/`.
 
 ## Quick start (Windows 11)
 

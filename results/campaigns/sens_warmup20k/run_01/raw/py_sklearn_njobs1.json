@@ -1,0 +1,34 @@
+{
+  "label": "py_sklearn_njobs1",
+  "n": 5000,
+  "env": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "machine": "AMD64",
+    "processor": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
+    "cpu_count_logical": 12,
+    "python": "3.13.5",
+    "numpy": "2.5.3",
+    "scikit-learn": "1.9.1",
+    "onnxruntime": "1.30.0",
+    "skl2onnx": "1.20.0",
+    "flask": "3.1.3",
+    "werkzeug": "3.1.8",
+    "waitress": "3.0.2",
+    "requests": "2.34.2",
+    "urllib3": "2.8.0",
+    "psutil": "7.2.2",
+    "cpu_affinity": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "batch_size": 1,
+  "warmup": 20000,
+  "warmup_source": "validation month (warmup_rows.csv)",
+  "measured_source": "test month (bench_rows.csv)",
+  "seed": 42,
+  "client": "python in-process",
+  "n_jobs": 1
+}

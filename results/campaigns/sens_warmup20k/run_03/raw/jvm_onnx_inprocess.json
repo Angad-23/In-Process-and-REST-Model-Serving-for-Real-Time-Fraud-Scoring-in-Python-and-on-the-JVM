@@ -1,0 +1,17 @@
+{
+  "label": "jvm_onnx_inprocess",
+  "arm": "onnx",
+  "n": 5000,
+  "warmup": 20000,
+  "warmup_source": "validation month (C:\\Users\\Angad\\OneDrive\\Desktop\\Personal-Work\\Mtech\\In-Process vs. REST Model Serving for Real-Time Fraud Scoring\\data\\processed\\warmup_rows.csv)",
+  "measured_source": "test month (C:\\Users\\Angad\\OneDrive\\Desktop\\Personal-Work\\Mtech\\In-Process vs. REST Model Serving for Real-Time Fraud Scoring\\data\\processed\\bench_rows.csv)",
+  "batch_size": 1,
+  "client": "JVM in-process",
+  "java": "21.0.12.1",
+  "jvm": "OpenJDK 64-Bit Server VM",
+  "jvm_args": "-Xmx4g -XX:+UseG1GC",
+  "os": "Windows 11 10.0",
+  "cpu_count_logical": 12,
+  "max_heap_mb": 4096,
+  "server_config": null
+}

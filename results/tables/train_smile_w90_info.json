@@ -1,0 +1,1 @@
+{"train_seconds": 53.325, "trees": 100, "max_depth": 20, "max_nodes": 500, "node_size": 5, "mtry": 5, "fraud_weight": 90, "fraud_weight_source": "fixed (sensitivity check)", "weighting": "oversample", "train_rows_original": 675666, "train_fraud": 6740, "train_rows_oversampled": 1275526, "seed": 42, "java": "21.0.12.1"}

@@ -1,0 +1,45 @@
+{
+  "temporal_split": {
+    "train_months": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "validation_months": [
+      5
+    ],
+    "test_months": [
+      6,
+      7
+    ]
+  },
+  "categorical_encoding": "ordinal; levels taken from TRAINING months only; unseen levels -> -1",
+  "constant_columns_dropped": {
+    "columns": [
+      "device_fraud_count"
+    ],
+    "decided_on": "training months only"
+  },
+  "missing_values": "BAF sentinel -1 kept as is (no imputation fitted on any data)",
+  "fraud_class_weight": {
+    "value": 99,
+    "provenance": "auto: round(#legit/#fraud) in training months only",
+    "train_legit": 668926,
+    "train_fraud": 6740,
+    "ratio_exact": 99.2472
+  },
+  "hyperparameters": {
+    "source": "fixed in python/config.yaml before any experiment; not tuned on validation or test",
+    "n_estimators": 100,
+    "max_depth": 20,
+    "max_leaf_nodes": 500,
+    "min_samples_leaf": 5,
+    "max_features": "sqrt",
+    "random_state": 42
+  },
+  "decision_thresholds": "chosen on the VALIDATION month only (5% FPR target; best F1), then applied to test",
+  "benchmark_rows": "bench_rows.csv: fixed-seed sequence of TEST rows (measured calls)",
+  "warmup_rows": "warmup_rows.csv: fixed-seed sequence of VALIDATION rows (warm-up calls only)"
+}

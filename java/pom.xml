@@ -13,7 +13,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <smile.version>3.1.1</smile.version>
-    <onnxruntime.version>1.17.1</onnxruntime.version>
+    <onnxruntime.version>1.30.0</onnxruntime.version>  <!-- must equal the Python onnxruntime version (reviewer 2); checked by run_campaign.py -->
   </properties>
 
   <dependencies>

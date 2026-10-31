@@ -1,10 +1,12 @@
 cff-version: 1.2.0
 message: "If you use this benchmark, please cite it."
-title: "Cross-language ML inference latency benchmark for JVM fraud-scoring stacks"
+title: "Where Does Inference Latency Go? Benchmark code and results for in-process and REST model serving for real-time fraud scoring in Python and on the JVM"
 authors:
   - family-names: Dhiman
     given-names: Angad
-version: 0.1.0
-date-released: "2026-09-20"
+    orcid: "https://orcid.org/0009-0007-0376-7214"
+version: 2.0.0
+date-released: "2026-10-31"
 license: MIT
-# Replace with the Zenodo DOI after you archive a tagged release (docs/07_submission_checklist.md).
+doi: 10.5281/zenodo.22996968
+repository-code: "https://github.com/Angad-23/JVM-fraud-benchmark"

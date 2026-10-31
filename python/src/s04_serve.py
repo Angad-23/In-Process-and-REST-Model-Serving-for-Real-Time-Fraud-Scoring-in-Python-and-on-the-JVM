@@ -1,29 +1,47 @@
 """REST inference service (the "Python bridge").
 
 Modes (pick one; report which you used in the paper):
-  --server flask-dev   Flask development server (reproduces the old paper's baseline; NOT for production)
-  --server waitress    multi-threaded production WSGI server (works on Windows)
-  (Linux/WSL/Docker) gunicorn:  gunicorn -w 4 -b 127.0.0.1:5000 "s04_serve:create_app('rf_sklearn.joblib', 1)"
+  --server flask-dev   Flask/Werkzeug development server, single-threaded (threaded=False), which speaks
+                       HTTP/1.0 and closes the connection after every response; logs every request.
+                       Reproduces the old paper's baseline; NOT for production.
+  --server waitress    multi-threaded production WSGI server (works on Windows), HTTP/1.1 keep-alive.
 
 --n-jobs sets the model's INFERENCE thread count. n_jobs=-1 on a single row spawns
 threads with large overhead; n_jobs=1 is the fair setting for single-transaction scoring.
 --backend onnx serves the ONNX copy through ONNX Runtime instead of scikit-learn.
 
 Endpoint: POST /predict   {"features": [f1, ..., fD]}   ->   {"prob": 0.0123}
+          GET  /health    -> {"ok": true, "config": {...}}   (exact server settings, recorded by every client)
 
-Server-side instrumentation: the time spent inside the model call alone is recorded per request.
-Every 1000 requests the server prints the median model-only time for the last 1000, so REST
-latency can be decomposed into (model time) + (HTTP / framework / scheduling overhead).
+Server-side timing (reviewer request: separate client, transport, server and model time).
+Every /predict response carries these headers, in microseconds, measured with time.perf_counter_ns():
+  X-Parse-us    request.get_json + conversion to a float32 array
+  X-Model-us    the model call only (predict_proba or ONNX Runtime run)
+  X-Handler-us  the whole view function, up to the moment the response object is built
+The client subtracts X-Handler-us from its measured round trip to obtain the time spent outside the
+handler: network stack (loopback), the WSGI server and the framework (request routing, response writing).
 """
 import argparse
+import json
+import platform
+import sys
 import time
+from importlib import metadata
+
 import joblib
 import numpy as np
-from flask import Flask, jsonify, request
-from common import load_config, resolve
+from flask import Flask, Response, request
+from common import load_config, resolve, disable_power_throttling
 
 
-def create_app(model_file="rf_sklearn.joblib", n_jobs=1, backend="sklearn", config=None):
+def _ver(pkg):
+    try:
+        return metadata.version(pkg)
+    except metadata.PackageNotFoundError:
+        return None
+
+
+def create_app(model_file="rf_sklearn.joblib", n_jobs=1, backend="sklearn", config=None, server_info=None):
     cfg = load_config(config)
     mdir = resolve(cfg, cfg["paths"]["results_dir"]) / "models"
     app = Flask(__name__)
@@ -43,22 +61,33 @@ def create_app(model_file="rf_sklearn.joblib", n_jobs=1, backend="sklearn", conf
         def score(x):
             return float(clf.predict_proba(x)[0, 1])
 
+    info = {"backend": backend, "n_jobs": int(n_jobs), "python": sys.version.split()[0],
+            "platform": platform.platform(), "flask": _ver("flask"), "werkzeug": _ver("werkzeug"),
+            "waitress": _ver("waitress"), "scikit-learn": _ver("scikit-learn"),
+            "onnxruntime": _ver("onnxruntime"), **(server_info or {})}
     model_us = []
 
     @app.post("/predict")
     def predict():
+        t0 = time.perf_counter_ns()
         x = np.asarray(request.get_json(force=True)["features"], dtype=np.float32).reshape(1, -1)
-        t0 = time.perf_counter()
+        t1 = time.perf_counter_ns()
         p = score(x)
-        model_us.append((time.perf_counter() - t0) * 1e6)
+        t2 = time.perf_counter_ns()
+        body = json.dumps({"prob": p})
+        t3 = time.perf_counter_ns()
+        model_us.append((t2 - t1) / 1000.0)
         if len(model_us) % 1000 == 0:
             print(f"[server] requests={len(model_us)} model-only median over last 1000 = "
                   f"{np.median(model_us[-1000:]):.1f}us", flush=True)
-        return jsonify({"prob": p})
+        return Response(body, mimetype="application/json", headers={
+            "X-Parse-us": f"{(t1 - t0) / 1000.0:.3f}",
+            "X-Model-us": f"{(t2 - t1) / 1000.0:.3f}",
+            "X-Handler-us": f"{(t3 - t0) / 1000.0:.3f}"})
 
     @app.get("/health")
     def health():
-        return jsonify({"ok": True})
+        return Response(json.dumps({"ok": True, "config": info}), mimetype="application/json")
 
     return app
 
@@ -73,11 +102,19 @@ def main():
     ap.add_argument("--port", type=int, default=None)
     ap.add_argument("--config", default=None)
     a = ap.parse_args()
+    disable_power_throttling()
     cfg = load_config(a.config)
     host = a.host or cfg["benchmark"]["service_host"]
     port = a.port or cfg["benchmark"]["service_port"]
-    app = create_app("rf_sklearn.joblib", a.n_jobs, a.backend, a.config)
-    print(f"serving backend={a.backend} n_jobs={a.n_jobs} server={a.server} on {host}:{port}")
+    if a.server == "flask-dev":
+        sinfo = {"server": "flask-dev (werkzeug run_simple)", "threaded": False, "http": "HTTP/1.0, connection closed after each response",
+                 "request_logging": "werkzeug logs every request (stdout redirected to a log file by run_campaign.py)"}
+    else:
+        sinfo = {"server": "waitress", "threads": a.threads, "http": "HTTP/1.1 keep-alive",
+                 "waitress_settings": "defaults except threads (connection_limit=100, channel_timeout=120 s)"}
+    sinfo.update({"host": host, "port": port})
+    app = create_app("rf_sklearn.joblib", a.n_jobs, a.backend, a.config, sinfo)
+    print(f"serving backend={a.backend} n_jobs={a.n_jobs} server={a.server} on {host}:{port}", flush=True)
     if a.server == "flask-dev":
         app.run(host=host, port=port, threaded=False)
     else:
